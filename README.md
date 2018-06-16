@@ -47,3 +47,40 @@ appuser@someinternalhost:~$
 ```bash
 ssh  -o 'ProxyCommand ssh appuser@35.206.144.27 -W %h:%p' appuser@someinternalhost
 ```
+### Настройка ~/.ssh/config
+Чтобы каждый раз при подключении к **someinternalhost** не указывать параметры **bastion** хоста, можно модифицировать **~/.ssh/config**
+```bash
+$ if ssh -J 2>&1 | grep "unknown option -- J" >/dev/null; then PROXY_COMMAND='ProxyCommand ssh appuser@bastion -W %h:%p'; else PROXY_COMMAND='ProxyJump %r@bastion'; fi
+$ cat <<EOF>>~/.ssh/config
+
+host bastion
+HostName 35.206.144.27
+
+host someinternalhost
+  HostName someinternalhost
+  User appuser
+  ServerAliveInterval 30
+${PROXY_COMMAND}
+  IdentityFile ~/.ssh/appuser
+EOF
+
+```
+Проверка подключения через alias **someinternalhost**
+```bash
+$ ssh someinternalhost
+Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  Get cloud support with Ubuntu Advantage Cloud Guest:
+    http://www.ubuntu.com/business/services/cloud
+
+0 packages can be updated.
+0 updates are security updates.
+
+
+Last login: Sat Jun 16 08:24:37 2018 from 10.132.0.2
+appuser@someinternalhost:~$
+```
