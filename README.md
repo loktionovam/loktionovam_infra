@@ -84,3 +84,9 @@ Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
 Last login: Sat Jun 16 08:24:37 2018 from 10.132.0.2
 appuser@someinternalhost:~$
 ```
+## Подключение к инстансам в GCP через VPN
+
+На **bastion** установлен и настроен pritunl VPN сервер. Для подключения к VPN нужно импортировать конфигурационный файл **cloud-bastion.ovpn** в OpenVPN клиент.
+
+bastion_IP = 35.206.144.27
+someinternalhost_IP = 10.132.0.3
