@@ -90,3 +90,10 @@ appuser@someinternalhost:~$
 
 bastion_IP = 35.206.144.27
 someinternalhost_IP = 10.132.0.3
+
+## Управление GCP через gcloud
+
+Создание правила файерволла для доступа к puma server
+```bash
+gcloud compute firewall-rules create default-puma-server --allow tcp:9292 --target-tags puma-server
+```
