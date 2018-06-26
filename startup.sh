@@ -15,4 +15,3 @@ for SCRIPT in ${SCRIPTS_LIST}; do
   ./"${SCRIPT}"
 done
 popd
-rm -rf startup
