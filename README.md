@@ -106,7 +106,7 @@ gcloud compute instances create reddit-app \
 --machine-type=g1-small \
 --tags puma-server \
 --restart-on-failure \
---metadata-from-file startup-script=startup.sh \
+--metadata-from-file startup-script=config-scripts/startup.sh \
 --metadata=git_repo_url="${GIT_REPO_URL}",git_repo_branch=$(git rev-parse --abbrev-ref HEAD)
 ```
 Создание правила файерволла для доступа к puma server

@@ -9,9 +9,9 @@ apt-get install --yes git
 git clone --no-checkout --branch "${GIT_REPO_BRANCH}" --depth 1 "${GIT_REPO_URL}" startup
 
 pushd startup || exit
-git checkout HEAD generic-functions
+git checkout HEAD config-scripts/generic-functions
 for SCRIPT in ${SCRIPTS_LIST}; do
-  git checkout HEAD "${SCRIPT}"
-  ./"${SCRIPT}"
+  git checkout HEAD config-scripts/"${SCRIPT}"
+  config-scripts/"${SCRIPT}"
 done
 popd
