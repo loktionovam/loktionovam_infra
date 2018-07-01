@@ -164,3 +164,50 @@ terraform apply
 ```
 
 будут потеряны.
+
+### Настройка HTTP балансировщика для пары хостов reddit-app, reddit-app2
+
+После добавления reddit-app2 и настройки http балансировщика через terraform есть проблема, которая заключается в том, что приложение reddit-app это statefull приложение, т.е. у него есть состояние (мы храним его в mongodb), которое балансировка не учитывает. В этом легко убедиться, если создать статью и сравнить БД на reddit-app и reddit-app2:
+
+```json
+reddit-app:~# mongo
+MongoDB shell version: 3.2.20
+connecting to: test
+> db.adminCommand( { listDatabases: 1 } )
+{
+	"databases" : [
+		{
+			"name" : "local",
+			"sizeOnDisk" : 65536,
+			"empty" : false
+		}
+	],
+	"totalSize" : 65536,
+	"ok" : 1
+}
+```
+
+```json
+reddit-app2:~# mongo
+MongoDB shell version: 3.2.20
+connecting to: test
+> db.adminCommand( { listDatabases: 1 } )
+{
+	"databases" : [
+		{
+			"name" : "local",
+			"sizeOnDisk" : 65536,
+			"empty" : false
+		},
+		{
+			"name" : "user_posts",
+			"sizeOnDisk" : 65536,
+			"empty" : false
+		}
+	],
+	"totalSize" : 131072,
+	"ok" : 1
+}
+```
+
+т.е. пользователь будет получать разный ответ в зависимости от того, на какой бэкенд он попал. Решение - убрать mongodb с app серверов и решать проблемы балансировки и доступности для app серверов (stateless) и БД серверов (statefull) раздельно. Для БД в общем случае это будет репликация для решения проблем с производительностью чтения и отказоустойчивостью, и шардирование для решения проблем с производительностью записи.
