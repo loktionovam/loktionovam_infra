@@ -137,3 +137,30 @@ config-scripts/create-reddit-vm.sh -i reddit-base
 config-scripts/create-reddit-vm.sh -h
 Usage: create-reddit-vm.sh [-n INSTANCE_NAME] [-i IMAGE_FAMILY]
 ```
+
+## Практика IaC с использованием Terraform
+
+При использовании IaC есть проблема - больше нельзя вносить изменения в инфраструктуру вручную, т.е. IaC используется или всегда или никогда. Например, пусть мы добавили ssh ключи в метаданные проекта через terraform
+
+```
+ssh-keys = "appuser1:${chomp(file(var.public_key_path))}"
+```
+
+затем применили изменения, добавили еще несколько пользователей
+
+```
+    ssh-keys = <<EOF
+appuser1:${chomp(file(var.public_key_path))}
+appuser2:${chomp(file(var.public_key_path))}
+appuser3:${chomp(file(var.public_key_path))}EOF
+```
+
+и опять применили изменения. После этого мы можем узнать, как со временем менялась инфраструктура, кто, когда и с какой целью вносил в нее изменения (это можно отследить через git, и файлы terraform.tfstate, terraform.tfstate.backup).
+
+Если теперь мы внесем изменения вручную, например, добавив ssh ключ для пользователя appuser_web через веб-интерфейс GCP, то эти изменения нигде не будут отражены и при выполении команды
+
+```bash
+terraform apply
+```
+
+будут потеряны.

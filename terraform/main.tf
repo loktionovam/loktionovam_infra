@@ -8,7 +8,10 @@ resource "google_compute_project_metadata" "infra" {
   project = "${var.project}"
 
   metadata {
-    ssh-keys = "appuser1:${chomp(file(var.public_key_path))}"
+    ssh-keys = <<EOF
+appuser1:${chomp(file(var.public_key_path))}
+appuser2:${chomp(file(var.public_key_path))}
+appuser3:${chomp(file(var.public_key_path))}EOF
   }
 }
 
