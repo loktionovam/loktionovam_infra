@@ -4,6 +4,14 @@ provider "google" {
   region  = "${var.region}"
 }
 
+resource "google_compute_project_metadata" "infra" {
+  project = "${var.project}"
+
+  metadata {
+    ssh-keys = "appuser1:${chomp(file(var.public_key_path))}"
+  }
+}
+
 resource "google_compute_instance" "app" {
   name         = "reddit-app"
   machine_type = "g1-small"
