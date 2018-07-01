@@ -28,3 +28,7 @@ variable "app_backend_port" {
   description = "Reddit application backend port"
   default     = 9292
 }
+
+variable "count" {
+  default = 1
+}
