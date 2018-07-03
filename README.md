@@ -90,3 +90,26 @@ appuser@someinternalhost:~$
 
 bastion_IP = 35.206.144.27
 someinternalhost_IP = 10.132.0.3
+
+## Управление GCP через gcloud
+
+testapp_IP = 104.199.102.152
+testapp_port = 9292  
+
+Автоматическое создание инстанса тестового приложения **reddit-app** с использованием startup script
+```bash
+export GIT_REPO_URL=https://github.com/Otus-DevOps-2018-05/loktionovam_infra.git
+gcloud compute instances create reddit-app \
+--boot-disk-size=10GB \
+--image-family ubuntu-1604-lts \
+--image-project=ubuntu-os-cloud \
+--machine-type=g1-small \
+--tags puma-server \
+--restart-on-failure \
+--metadata-from-file startup-script=startup.sh \
+--metadata=git_repo_url="${GIT_REPO_URL}",git_repo_branch=$(git rev-parse --abbrev-ref HEAD)
+```
+Создание правила файерволла для доступа к puma server
+```bash
+gcloud compute firewall-rules create default-puma-server --allow tcp:9292 --target-tags puma-server
+```

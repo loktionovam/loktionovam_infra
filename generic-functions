@@ -1,0 +1,98 @@
+function msg_error {
+  logger --tag ${SCRIPT_NAME:-console} --stderr --id=${TOP_PID:-999999} -p user.err "$1"
+}
+
+function msg_warn {
+  logger --tag ${SCRIPT_NAME:-console} --stderr --id=${TOP_PID:-999999} -p user.warning "$1"
+}
+
+function msg_info {
+  logger --tag ${SCRIPT_NAME:-console} --stderr --id=${TOP_PID:-999999} -p user.info "$1"
+}
+
+function msg_debug {
+  if $DEBUG_MODE; then
+     logger --tag ${SCRIPT_NAME:-console} --stderr --id=${TOP_PID:-999999} -p user.debug "$1"
+  fi
+}
+
+function die {
+  msg_error "$@"
+  msg_debug "Function ${FUNCNAME[0]}: Pids $TOP_PID, $$ will be terminated"
+  kill -s TERM $TOP_PID $$
+}
+
+function obtain_lock {
+  if [ "${FLOCKER}" != "$0" ]; then
+    msg_debug "Function ${FUNCNAME[0]}: Try to obtain exclusive lock for $0"
+    exec env FLOCKER="$0" TOP_PID=$$ flock --verbose --exclusive --nonblock "$0"  "$0"  "$@"
+  else
+    msg_debug "Function ${FUNCNAME[0]}: Exclusive lock for $0 successfully obtained"
+  fi
+}
+
+function exec_cmd {
+  local CMD
+  local MSG
+
+  CMD=$1
+  MSG=$2
+
+  msg_info "${MSG}"
+  msg_debug "${CMD}"
+  if eval $CMD; then
+    msg_debug "${MSG} (ok)"
+  else
+    die "${MSG} (failed, abort)"
+  fi
+}
+
+function is_repo_enabled {
+  local REPO
+
+  #REPO string format: "URI SUITE/COMPONENT ARCH"
+  REPO=$1
+  #Update repository cache before repository check via apt-cache policy
+  exec_cmd "sudo apt-get update" "Update package cache"
+  #we use apt-cache policy instead simple "grep bla-bla *.list" files because sources.list may contain deb822 style entries.
+  #see THE DEB AND DEB-SRC TYPES: GENERAL FORMAT section in man 5 sources.list
+  if apt-cache policy | grep "${REPO}" > /dev/null; then
+    true
+  else
+    false
+  fi
+}
+
+function enable_repo {
+  local REPO
+  local REPO_LIST_FILE
+
+  REPO=$1
+  REPO_LIST_FILE=$2
+  exec_cmd "echo \"deb ${REPO}\" | sudo tee ${REPO_LIST_FILE}" "Add repository ${REPO} to ${REPO_LIST_FILE} file"
+  exec_cmd "sudo apt-get update" "Update package cache"
+}
+
+function is_package_installed {
+  local PACKAGE_NAME
+
+  PACKAGE_NAME=$1
+
+  if dpkg-query -l "${PACKAGE_NAME}" >/dev/null 2>&1; then
+    true
+  else
+    false
+  fi
+}
+
+function simple_http_check {
+  local URI
+
+  URI=$1
+
+  if [ $(curl --silent --output /dev/null --head --write-out "%{http_code}" "${URI}") -eq 200 ]; then
+    true
+  else
+    false
+  fi
+}
