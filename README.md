@@ -236,3 +236,59 @@ app_external_ip = [
 ]
 lb_app_external_ip = loadbalancer-ip-address-here
 ```
+
+## Homework-7: Terraform: ресурсы, модули, окружения и работа в команде
+
+#### 7.1 Что было сделано
+
+Основные задания:
+- Отключен loadbalancer из homework-6
+- В packer созданы отдельные образы для db и app серверов соответственно
+- Монолитная конфигурация terraform разбита на модули **app, db, vpc**
+- В terraform созданы окружения для **stage** и **prod**
+
+Задания со *:
+- Созданы бакеты для хранения, в которые перемещены **prod** и **stage** terraform state files
+- В конфигурацию **app** модуля terraform добавлено развертывание reddit приложения. Добавлен ключ для включения/выключения развертывания приложения
+
+### 7.2 Как запустить проект
+
+Исходное состояние: установлены terraform (проверено на версии **v0.11.7**), packer (проверено на версии **1.2.4**) с доступом к GCP
+
+Создать образы reddit-app, reddit-db через packer, предварительно настроив **variables.json**
+```bash
+cd packer
+cp variables.json{.example,}
+#configure variables.json here
+packer build -var-file=variables.json db.json
+packer build -var-file=variables.json app.json
+cd -
+```
+
+Создать бакеты для хранения state файла terraform, предварительно настроив **terraform.tfvars**
+```bash
+cd terraform
+cp terraform.tfvars{.example,}
+#configure terraform.tfvars here
+terraform init
+terraform apply -auto-approve
+```
+
+Создать prod/stage окружение, например для stage выполнить (при этом, для **prod** нужно задать переменную **source_ranges** для доступа по ssh):
+```bash
+cd stage/
+cp terraform.tfvars{.example,}
+#configure terraform.tfvars here
+terraform init
+terraform apply -auto-approve
+```
+
+### 7.3 Как проверить 
+
+В terraform/stage (или terraform/prod) выполнить
+
+```bash
+terraform output
+```
+
+будут выведены переменные **app_external_ip**, **db_external_ip**, при этом по адресу http://app_external_ip:9292 будет доступно приложение.
