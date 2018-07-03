@@ -20,19 +20,6 @@ variable private_key_path {
   description = "Path to the private key used for ssh access"
 }
 
-variable disk_image {
-  description = "Disk image"
-}
-
-variable "app_backend_port" {
-  description = "Reddit application backend port"
-  default     = 9292
-}
-
-variable "count" {
-  default = 1
-}
-
 variable "app_disk_image" {
   description = "Disk image for reddit app"
   default     = "reddit-app-base"
