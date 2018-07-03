@@ -11,3 +11,8 @@ variable "db_disk_image" {
   description = "Disk image for reddit db"
   default     = "reddit-db-base"
 }
+
+variable "db_port" {
+  description = "Reddit db port"
+  default     = "27017"
+}

@@ -28,7 +28,7 @@ resource "google_compute_firewall" "firewall_mongo" {
 
   allow {
     protocol = "tcp"
-    ports    = ["27017"]
+    ports    = ["${var.db_port}"]
   }
 
   target_tags = ["reddit-db"]
