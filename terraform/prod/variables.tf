@@ -32,5 +32,5 @@ variable "db_disk_image" {
 
 variable "source_ranges" {
   description = "Allowed ssh source ip"
-  type = "list"
+  type        = "list"
 }
