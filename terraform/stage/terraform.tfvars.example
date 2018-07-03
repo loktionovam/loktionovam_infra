@@ -9,3 +9,5 @@ app_disk_image = "reddit-app-base"
 db_disk_image = "reddit-db-base"
 
 source_ranges = ["0.0.0.0/0"]
+
+app_provision_enabled = "true"

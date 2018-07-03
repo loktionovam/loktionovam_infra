@@ -34,3 +34,8 @@ variable "source_ranges" {
   description = "Allowed ssh source ip"
   type        = "list"
 }
+
+variable "app_provision_enabled" {
+  description = "Enable/disable reddit app provision switch"
+  default     = true
+}

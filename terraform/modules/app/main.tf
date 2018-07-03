@@ -22,9 +22,15 @@ resource "google_compute_instance" "app" {
       nat_ip = "${google_compute_address.app_ip.address}"
     }
   }
+}
+
+resource "null_resource" "app" {
+  count = "${var.app_provision_enabled ? 1 : 0}"
 
   connection {
-    type        = "ssh"
+    type = "ssh"
+
+    host        = "${google_compute_address.app_ip.address}"
     user        = "appuser"
     agent       = false
     private_key = "${file(var.private_key_path)}"
