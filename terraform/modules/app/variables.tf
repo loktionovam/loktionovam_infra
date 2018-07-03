@@ -11,3 +11,8 @@ variable "app_disk_image" {
   description = "Disk image for reddit app"
   default     = "reddit-app-base"
 }
+
+variable "app_port" {
+  description = "Reddit app port"
+  default     = "9292"
+}
