@@ -4,6 +4,14 @@ provider "google" {
   region  = "${var.region}"
 }
 
+data "terraform_remote_state" "state" {
+  backend = "gcs"
+
+  config {
+    bucket = "infra-tf-state-prod"
+  }
+}
+
 module "app" {
   source          = "../modules/app"
   public_key_path = "${var.public_key_path}"
