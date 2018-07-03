@@ -22,6 +22,7 @@ resource "google_compute_instance" "db" {
   }
 }
 
+#Note: Source tags cannot be used to allow access to an instance's external IP address. Use internal ip address instead.
 resource "google_compute_firewall" "firewall_mongo" {
   name    = "allow-mongo-default"
   network = "default"
