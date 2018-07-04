@@ -283,7 +283,7 @@ terraform init
 terraform apply -auto-approve
 ```
 
-### 7.3 Как проверить 
+### 7.3 Как проверить
 
 В terraform/stage (или terraform/prod) выполнить
 
@@ -292,3 +292,78 @@ terraform output
 ```
 
 будут выведены переменные **app_external_ip**, **db_external_ip**, при этом по адресу http://app_external_ip:9292 будет доступно приложение.
+
+## Homework-8: Управление конфигурацией. Основные DevOps инструменты. Знакомство с Ansible
+
+#### 8.1 Что было сделано
+
+Основные задания:
+- Установка и знакомство с базовыми функциями ansible
+- Написание простых плейбуков
+
+Задания со *:
+- Создание inventory в формате json
+
+### 8.2 Как запустить проект
+
+Развернуть stage через terraform (см. **7.2 Как запустить проект**), после чего перейти в каталог ansible и запустить плейбук, клонирующий репозиторий reddit на app сервер
+
+```bash
+cd ansible
+ansible-playbook clone.yml
+```
+
+Повторный запуск плейбука идемпотентен, т.е. повторно клонироваться репозиторий не будет (changed=0)
+
+```bash
+ansible-playbook clone.yml
+...
+appserver                  : ok=2    changed=0    unreachable=0    failed=0
+```
+
+Но если удалить склонированный репозиторий
+
+```bash
+ansible app -m command -a 'rm -rf ~/reddit'
+ [WARNING]: Consider using file module with state=absent rather than running rm
+
+appserver | SUCCESS | rc=0 >>
+```
+
+то исполнение плейбука склонирует репозиторий заново (changed=1)
+
+```bash
+ansible-playbook clone.yml
+...
+appserver                  : ok=2    changed=1    unreachable=0    failed=0
+```
+
+Для запуска ansible с использованием inventory в формате **json** нужен инвентори-скрипт, который в самом простом случае при вызове с ключом **--list** должен выводить хосты в json формате. Например, если у нас уже есть inventory.json, то передать его ansible можно таким скриптом **inventory_json**
+
+```bash
+#!/usr/bin/env bash
+
+if [ "$1" = "--list" ] ; then
+    cat $(dirname "$0")/inventory.json
+elif [ "$1" = "--host" ]; then
+    echo "{}"
+fi
+```
+
+```bash
+ansible -i inventory_json all -m ping
+```
+
+Чтобы не указывать **inventory_json**, его можно добавить в **ansible.cfg**
+
+```ini
+inventory =./inventory_json,./inventory
+```
+
+### 8.3 Как проверить
+
+После выполнения плейбука **clone.yml** можно проверить, что репозиторий действительно склонировался, например командой
+
+```bash
+ansible appserver -m command  -a "git log -1 chdir=/home/appuser/reddit"
+```
