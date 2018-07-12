@@ -1,7 +1,6 @@
 ---
 - name: Configure MongoDB
-  hosts: db
-  become: true
+  hosts: tag_reddit-db
   vars:
     mongo_bind_ip: 0.0.0.0
   tasks:

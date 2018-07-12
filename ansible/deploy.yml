@@ -1,5 +1,5 @@
 - name: Deploy App
-  hosts: app
+  hosts: tag_reddit-app
   tags: deploy-tag
 
   tasks:
