@@ -137,3 +137,102 @@ config-scripts/create-reddit-vm.sh -i reddit-base
 config-scripts/create-reddit-vm.sh -h
 Usage: create-reddit-vm.sh [-n INSTANCE_NAME] [-i IMAGE_FAMILY]
 ```
+
+## Практика IaC с использованием Terraform
+
+При использовании IaC есть проблема - больше нельзя вносить изменения в инфраструктуру вручную, т.е. IaC используется или всегда или никогда. Например, пусть мы добавили ssh ключи в метаданные проекта через terraform
+
+```
+ssh-keys = "appuser1:${chomp(file(var.public_key_path))}"
+```
+
+затем применили изменения, добавили еще несколько пользователей
+
+```
+    ssh-keys = <<EOF
+appuser1:${chomp(file(var.public_key_path))}
+appuser2:${chomp(file(var.public_key_path))}
+appuser3:${chomp(file(var.public_key_path))}EOF
+```
+
+и опять применили изменения. После этого мы можем узнать, как со временем менялась инфраструктура, кто, когда и с какой целью вносил в нее изменения (это можно отследить через git, и файлы terraform.tfstate, terraform.tfstate.backup).
+
+Если теперь мы внесем изменения вручную, например, добавив ssh ключ для пользователя appuser_web через веб-интерфейс GCP, то эти изменения нигде не будут отражены и при выполении команды
+
+```bash
+terraform apply
+```
+
+будут потеряны.
+
+### Настройка HTTP балансировщика для пары хостов reddit-app, reddit-app2
+
+После добавления reddit-app2 и настройки http балансировщика через terraform есть проблема, которая заключается в том, что приложение reddit-app это statefull приложение, т.е. у него есть состояние (мы храним его в mongodb), которое балансировка не учитывает. В этом легко убедиться, если создать статью и сравнить БД на reddit-app и reddit-app2:
+
+```json
+reddit-app:~# mongo
+MongoDB shell version: 3.2.20
+connecting to: test
+> db.adminCommand( { listDatabases: 1 } )
+{
+	"databases" : [
+		{
+			"name" : "local",
+			"sizeOnDisk" : 65536,
+			"empty" : false
+		}
+	],
+	"totalSize" : 65536,
+	"ok" : 1
+}
+```
+
+```json
+reddit-app2:~# mongo
+MongoDB shell version: 3.2.20
+connecting to: test
+> db.adminCommand( { listDatabases: 1 } )
+{
+	"databases" : [
+		{
+			"name" : "local",
+			"sizeOnDisk" : 65536,
+			"empty" : false
+		},
+		{
+			"name" : "user_posts",
+			"sizeOnDisk" : 65536,
+			"empty" : false
+		}
+	],
+	"totalSize" : 131072,
+	"ok" : 1
+}
+```
+
+т.е. пользователь будет получать разный ответ в зависимости от того, на какой бэкенд он попал. Решение - убрать mongodb с app серверов и решать проблемы балансировки и доступности для app серверов (stateless) и БД серверов (statefull) раздельно. Для БД в общем случае это будет репликация для решения проблем с производительностью чтения и отказоустойчивостью, и шардирование для решения проблем с производительностью записи.
+
+Количество app серверов настраивается переменной count (по-умолчанию она равна 1) в файле **terraform.tfvars** Например, если задать
+
+```
+count = 3
+```
+
+то будет созадно 3 инстанса **reddit-app-001, reddit-app-002, reddit-app-003**
+
+При этом после выполнения команды
+
+```bash
+terraform apply
+```
+
+будут выведены ip адреса каждого инстанса и ip адрес loadbalancer
+
+```
+app_external_ip = [
+    reddit-app-001-ip-address-here,
+    reddit-app-002-ip-address-here,
+    reddit-app-003-ip-address-here
+]
+lb_app_external_ip = loadbalancer-ip-address-here
+```
