@@ -53,7 +53,3 @@ resource "google_compute_health_check" "app" {
     request_path = "/"
   }
 }
-
-output "lb_app_external_ip" {
-  value = "${google_compute_global_forwarding_rule.app.ip_address}"
-}
