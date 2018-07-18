@@ -236,3 +236,134 @@ app_external_ip = [
 ]
 lb_app_external_ip = loadbalancer-ip-address-here
 ```
+
+## Homework-7: Terraform: ресурсы, модули, окружения и работа в команде
+
+#### 7.1 Что было сделано
+
+Основные задания:
+- Отключен loadbalancer из homework-6
+- В packer созданы отдельные образы для db и app серверов соответственно
+- Монолитная конфигурация terraform разбита на модули **app, db, vpc**
+- В terraform созданы окружения для **stage** и **prod**
+
+Задания со *:
+- Созданы бакеты для хранения, в которые перемещены **prod** и **stage** terraform state files
+- В конфигурацию **app** модуля terraform добавлено развертывание reddit приложения. Добавлен ключ для включения/выключения развертывания приложения
+
+### 7.2 Как запустить проект
+
+Исходное состояние: установлены terraform (проверено на версии **v0.11.7**), packer (проверено на версии **1.2.4**) с доступом к GCP
+
+Создать образы reddit-app, reddit-db через packer, предварительно настроив **variables.json**
+```bash
+cd packer
+cp variables.json{.example,}
+#configure variables.json here
+packer build -var-file=variables.json db.json
+packer build -var-file=variables.json app.json
+cd -
+```
+
+Создать бакеты для хранения state файла terraform, предварительно настроив **terraform.tfvars**
+```bash
+cd terraform
+cp terraform.tfvars{.example,}
+#configure terraform.tfvars here
+terraform init
+terraform apply -auto-approve
+```
+
+Создать prod/stage окружение, например для stage выполнить (при этом, для **prod** нужно задать переменную **source_ranges** для доступа по ssh):
+```bash
+cd stage/
+cp terraform.tfvars{.example,}
+#configure terraform.tfvars here
+terraform init
+terraform apply -auto-approve
+```
+
+### 7.3 Как проверить
+
+В terraform/stage (или terraform/prod) выполнить
+
+```bash
+terraform output
+```
+
+будут выведены переменные **app_external_ip**, **db_external_ip**, при этом по адресу http://app_external_ip:9292 будет доступно приложение.
+
+## Homework-8: Управление конфигурацией. Основные DevOps инструменты. Знакомство с Ansible
+
+#### 8.1 Что было сделано
+
+Основные задания:
+- Установка и знакомство с базовыми функциями ansible
+- Написание простых плейбуков
+
+Задания со *:
+- Создание inventory в формате json
+
+### 8.2 Как запустить проект
+
+Развернуть stage через terraform (см. **7.2 Как запустить проект**), после чего перейти в каталог ansible и запустить плейбук, клонирующий репозиторий reddit на app сервер
+
+```bash
+cd ansible
+ansible-playbook clone.yml
+```
+
+Повторный запуск плейбука идемпотентен, т.е. повторно клонироваться репозиторий не будет (changed=0)
+
+```bash
+ansible-playbook clone.yml
+...
+appserver                  : ok=2    changed=0    unreachable=0    failed=0
+```
+
+Но если удалить склонированный репозиторий
+
+```bash
+ansible app -m command -a 'rm -rf ~/reddit'
+ [WARNING]: Consider using file module with state=absent rather than running rm
+
+appserver | SUCCESS | rc=0 >>
+```
+
+то исполнение плейбука склонирует репозиторий заново (changed=1)
+
+```bash
+ansible-playbook clone.yml
+...
+appserver                  : ok=2    changed=1    unreachable=0    failed=0
+```
+
+Для запуска ansible с использованием inventory в формате **json** нужен инвентори-скрипт, который в самом простом случае при вызове с ключом **--list** должен выводить хосты в json формате. Например, если у нас уже есть inventory.json, то передать его ansible можно таким скриптом **inventory_json**
+
+```bash
+#!/usr/bin/env bash
+
+if [ "$1" = "--list" ] ; then
+    cat $(dirname "$0")/inventory.json
+elif [ "$1" = "--host" ]; then
+    echo "{}"
+fi
+```
+
+```bash
+ansible -i inventory_json all -m ping
+```
+
+Чтобы не указывать **inventory_json**, его можно добавить в **ansible.cfg**
+
+```ini
+inventory =./inventory_json,./inventory
+```
+
+### 8.3 Как проверить
+
+После выполнения плейбука **clone.yml** можно проверить, что репозиторий действительно склонировался, например командой
+
+```bash
+ansible appserver -m command  -a "git log -1 chdir=/home/appuser/reddit"
+```
