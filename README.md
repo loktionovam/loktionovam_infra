@@ -367,3 +367,76 @@ inventory =./inventory_json,./inventory
 ```bash
 ansible appserver -m command  -a "git log -1 chdir=/home/appuser/reddit"
 ```
+
+## Homework-9: Деплой и управление конфигурацией с Ansible
+
+
+### 9.1 Что было сделано
+
+Основные задания:
+
+- Создание плейбуков ansible для конфигурирования и деплоя reddit приложения (**site.yml, db.yml, app.yml, deploy.yml**)
+- Создание плейбуков ansible (**packer_db.yml, packer_app.yml**), их использование в packer
+
+Задания со *:
+
+- Исследование возможности использования dynamic inventory в GCP через contrib модуль ansible (gce.py) и terraform state file
+- Настройка dynamic inventory (выбран и используется **gce.py**). Дополнительно написаны ansible плейбуки для конфигурирования dynamic inventory  (**terraform_dynamic_inventory_setup.yml, gce_dynamic_inventory_setup.yml**)
+
+### 9.2 Как запустить проект
+
+Предварительные действия: развернуть stage (см. **7.2 Как запустить проект**)
+
+#### 9.2.1 Настройка динамического inventory через gce.py (основной способ, используется в плейбуках раздела 9.2.3)
+
+**Преимущества**: поставляется вместе с ansible; собирает больше данных, чем terraform-inventory; проще в настройке
+
+**Недостатки**: это inventory только для GCE
+
+Нужно создать сервисный аккаунт в GCE, скачать credential file в формате json и указать к нему путь во время исполнения **gce_dynamic_inventory_setup.yml**
+
+```bash
+cd ansible
+ansible-playbook gce_dynamic_inventory_setup.yml
+Enter path to GCE service account pem file [credentials/gce-service-account.json]:
+```
+
+Посмотреть хосты динамического inventory через gce.py можно так:
+
+```bash
+sudo apt-get install jq
+./inventory_gce/gce.py --list | jq .
+```
+
+#### 9.2.2 Настройка динамического inventory через terraform-inventory
+
+**Преимущества**: через terraform можно делать динамический inventory не только GCE, но и остльных провайдеров; возможно, более высокая производительность, т.к. state файл с данными уже существует (это предположение требует проверки)
+
+**Недостатки**: текущий релиз (v0.7-pre Sep 22, 2016) не поддерживает terraform remote state file, как следствие, нужно компилировать; собирает меньше данных, чем gce.py; не очень понятно, что у него с поддержкой и комьюнити
+
+Чтобы автоматически настроить динамический inventory через terraform, нужно выполнить:
+
+```bash
+cd ansible
+ansible-playbook --ask-sudo-pass terraform_dynamic_inventory_setup.yml
+```
+
+Посмотреть хосты динамического inventory через terraform можно так (перед запуском, предполагается, что инфраструктура развернута через terraform):
+
+```bash
+sudo apt-get install jq
+TF_STATE=../terraform/stage/ ./inventory_terraform/terraform-inventory --list | jq .
+```
+
+#### 9.2.3 Конфигурация и деплой приложения
+
+Выполняем **9.2.1 Настройка динамического inventory через gce.py**
+
+```bash
+cd ansible
+ansible-playbook site.yml
+```
+
+### 9.3 Как проверить проект
+
+Описано в **7.3 Как проверить**
