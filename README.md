@@ -448,3 +448,68 @@ ansible-playbook site.yml
 ### 9.3 Как проверить проект
 
 Описано в **7.3 Как проверить**
+
+## Homework-10: Ansible - работа с ролями и окружениями
+
+### 10.1 Что было сделано
+
+Основные задания:
+
+- Плейбуки (app.yml, db.yml, gce_dynamic_inventory_setup.yml, terraform_dynamic_inventory_setup.yml) переписаны с использованией ролей
+
+- Созданы окружения stage, prod
+
+- Добавлен users.yml плейбук с использованием ansible vault
+
+- Добавлена сторонная роль jdauphant.nginx конфигурирующая nginx как прокси-сервер;
+
+Задания со *:
+
+- Настроено динамическое инвентори для окружений stage и prod
+
+Задания с **:
+
+- Настроен travis ci для запуска packer validate, terraform validate, tflint, ansible-lint. В README.md добавлен бейдж со статусом билда
+
+### 10.2 Как запустить проект
+
+Предварительные действия: развернуть stage (см. **7.2 Как запустить проект**)
+
+- Установить в рабочее окружение gce.py или terrafom inventory для динамического инвентори (плейбуки app.yml, db.yml, deploy.yml поддерживают оба варианта через ad-hoc группы в ansible)
+
+```bash
+cd ansible
+pip install -r requirements.txt
+ansible-playbook playbooks/gce_dynamic_inventory_setup.yml
+```
+
+- Для работы nginx прокси установить комьюнити-роль jdauphant.nginx
+
+```bash
+ansible-galaxy install -r environments/stage/requirements.yml
+```
+
+- Настроить vault создав файл vault.key (используется в плейбуке users.yml)
+
+```bash
+echo "some_secret_for_ansible_vault" > ansible/vault.key
+```
+
+- Запустить развертывание reddit приложения
+
+```bash
+cd ansible
+ansible-playbook playbooks/site.yml
+```
+
+### 10.3 Как проверить проект
+
+- В README.md должен стоять бэйдж **build passing**
+
+- В terraform/stage (или terraform/prod) выполнить
+
+```bash
+terraform output
+```
+
+будут выведены переменные **app_external_ip**, **db_external_ip**, при этом по адресу http://app_external_ip будет доступно приложение.
