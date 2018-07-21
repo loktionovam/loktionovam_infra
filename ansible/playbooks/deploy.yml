@@ -1,6 +1,13 @@
 - name: Deploy App
-  hosts: tag_reddit-app
+  hosts:
+    - tag_reddit-app
+    - app
   tags: deploy-tag
+
+  pre_tasks:
+    - name: Create ad-hoc app group
+      group_by:
+        key: "app"
 
   tasks:
     - name: Fetch the latest version of application code

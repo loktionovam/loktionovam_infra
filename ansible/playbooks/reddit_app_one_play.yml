@@ -13,7 +13,7 @@
         mode: 0644
       tags: db-tag
       notify: restart mongod
-      
+
     - name: Add unit file for Puma
       become: true
       copy:
