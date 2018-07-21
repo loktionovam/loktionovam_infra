@@ -8,3 +8,4 @@ packer/variables.json
 ansible/credentials/gce-service-account.json
 ansible/inventory_gce/*
 ansible/inventory_terraform/*
+vault.key
