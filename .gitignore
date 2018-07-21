@@ -9,4 +9,5 @@ gce-service-account.json
 ansible/inventory_gce/*
 ansible/inventory_terraform/*
 vault.key
+terraform-inventory
 gce.py
