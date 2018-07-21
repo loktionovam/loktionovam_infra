@@ -1,6 +1,14 @@
 # loktionovam_infra
 loktionovam Infra repository
 
+**Build status**
+
+master:
+[![Build Status](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra.svg?branch=master)](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra)
+
+ansible-3:
+[![Build Status](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra.svg?branch=ansible-3)](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra)
+
 ## Подключение через ssh к инстансам в GCP через bastion хост
 ### Начальные данные
 * bastion
