@@ -1,4 +1,8 @@
---- 
+---
 
-- src: jdauphant.nginx 
+- src: jdauphant.nginx
   version: v2.18.1
+
+- src: loktionovam.db
+  version: 1.0.1
+  name: db
