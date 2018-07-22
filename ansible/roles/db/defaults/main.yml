@@ -1,5 +1,9 @@
 ---
 # defaults file for db
+mongo_version: 3.2
+mongo_repo: "deb http://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/{{ mongo_version }} multiverse"
+mongo_packages:
+  - mongodb-org
 
 mongo_port: 27017
 mongo_bind_ip: 127.0.0.1

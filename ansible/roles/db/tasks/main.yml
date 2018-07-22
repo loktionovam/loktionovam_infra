@@ -5,10 +5,9 @@
   debug:
     msg: "This host is in {{ env }} environment!!!"
 
-- name: Change mongo config file
-  become: true
-  template:
-    src: mongod.conf.j2
-    dest: /etc/mongod.conf
-    mode: 0644
-  notify: restart mongod
+- name: Import mongo installation tasks
+  import_tasks: install_mongo.yml
+  become: yes
+
+- name: Import mongo configuration tasks
+  import_tasks: config_mongo.yml
