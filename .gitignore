@@ -12,3 +12,10 @@ jdauphant.nginx
 vault.key
 terraform-inventory
 gce.py
+# Vagrant & molecule 
+.vagrant/ 
+*.log 
+*.pyc 
+.molecule 
+.cache 
+.pytest_cache
