@@ -3,3 +3,9 @@
 
 db_host: 127.0.0.1
 env: local
+deploy_user: appuser
+
+app_ruby_packages:
+  - ruby-full
+  - ruby-bundler
+  - build-essential
