@@ -662,6 +662,7 @@ ansible-galaxy import --help | grep -A 2 role-name=ROLE_NAME
 
 ```bash
 cd ansible
+ansible-galaxy install -r environments/dev/requirements.yml
 vagrant up
 ```
 
