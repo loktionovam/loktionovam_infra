@@ -21,6 +21,11 @@ variable "app_port" {
   default     = "9292"
 }
 
+variable "http_port" {
+  description = "Reddit http port"
+  default     = "80"
+}
+
 variable "db_address" {
   description = "Mongodb address"
   default     = "localhost"

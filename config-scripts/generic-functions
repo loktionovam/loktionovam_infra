@@ -3,16 +3,16 @@ function msg_error {
 }
 
 function msg_warn {
-  logger --tag ${SCRIPT_NAME:-console} --stderr --id=${TOP_PID:-999999} -p user.warning "$1"
+  logger --tag ${SCRIPT_NAME:-console} --stderr -p user.warning "$1"
 }
 
 function msg_info {
-  logger --tag ${SCRIPT_NAME:-console} --stderr --id=${TOP_PID:-999999} -p user.info "$1"
+  logger --tag ${SCRIPT_NAME:-console} --stderr -p user.info "$1"
 }
 
 function msg_debug {
   if $DEBUG_MODE; then
-     logger --tag ${SCRIPT_NAME:-console} --stderr --id=${TOP_PID:-999999} -p user.debug "$1"
+     logger --tag ${SCRIPT_NAME:-console} --stderr -p user.debug "$1"
   fi
 }
 
@@ -95,4 +95,41 @@ function simple_http_check {
   else
     false
   fi
+}
+
+function docker_terraform { 
+    local dir
+    local action
+    local params
+
+    dir=$1
+    action=$2
+    params=$3
+
+    exec_cmd "docker run -i --mount type=bind,source="$(pwd)"/terraform,target=/terraform \
+    --mount type=bind,source="${HOME}"/.ssh,target=/root/.ssh \
+     --workdir /"${dir}" \
+     -t hashicorp/terraform:light "${action}" ${params}" "Function ${FUNCNAME[0]}: Run terrafrom ${action} in the ${dir}"
+}
+
+function docker_tflint { 
+    local dir
+    local params
+
+    dir=$1
+    params=$2
+
+    exec_cmd "docker run --rm -v "$(pwd)/terraform":/data -t wata727/tflint ${params}" \
+    "Function ${FUNCNAME[0]}: Run tflint in the ${dir}"
+}
+
+function docker_packer {
+  local var_file
+  local template
+
+  var_file=$1
+  template=$2
+  exec_cmd "docker run -i  -t --volume $(pwd):/data \
+  --workdir /data packer-ansible validate -var-file="${var_file}" "${template}"" \
+  "Function ${FUNCNAME[0]}: Validate packer template ${template}"
 }
