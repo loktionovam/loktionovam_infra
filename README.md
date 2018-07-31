@@ -6,8 +6,11 @@ loktionovam Infra repository
 master:
 [![Build Status](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra.svg?branch=master)](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra)
 
-ansible-3:
-[![Build Status](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra.svg?branch=ansible-3)](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra)
+ansible-4:
+[![Build Status](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra.svg?branch=ansible-4)](https://travis-ci.com/Otus-DevOps-2018-05/loktionovam_infra)
+
+db role(v.1.1.0):
+[![Build Status](https://travis-ci.org/loktionovam/db.svg?branch=1.1.0)](https://travis-ci.org/loktionovam/db)
 
 ## Подключение через ssh к инстансам в GCP через bastion хост
 ### Начальные данные
@@ -513,3 +516,169 @@ terraform output
 ```
 
 будут выведены переменные **app_external_ip**, **db_external_ip**, при этом по адресу http://app_external_ip будет доступно приложение.
+
+## Homework-11: Разработка и тестирование Ansible ролей и плейбуков
+
+### 11.1 Что было сделано
+
+Основные задания:
+
+- Локальная разработка при помощи Vagrant - в Vagrantfile описаны конфигурации appserver, dbserver
+
+- Добавлен плейбук base.yml для ansible bootstrap на хостах, где не установлен python
+
+- Доработана роль db для использования в Vagrant, в которую добавлены таски config_mongo.yml, install_mongo.yml
+
+- В Vagrantfile добавлены ansible провижинеры для appserver и dbserver
+
+- Добавлены тесты роли db через molecula и testinfra
+
+
+Задания со *:
+
+- Добавлено dev окружение, в котором настроена параметризация конфигурации appserver в Vagrant
+
+- Роль db перемещена в отдельный репозиторий loktionovam/db, роль db импортирована в ansible galaxy и подключена через файл зависимостей requirements.yml для stage и prod окружений
+
+- Для роли db настроен запуск тестов molecule/testinfra в GCE через travis ci после пуша в репозиторий, в README.md роли добавлен бэйдж статуса сборки, включена интеграция билдов travis ci со slack каналом интеграции
+
+### 11.2 Как запустить проект
+
+#### 11.2.1 Репозиторий ansible роли db
+
+Запуск тестов вручную без travis
+
+- Склонировать репозиторий
+
+```bash
+git clone git@github.com:loktionovam/db.git
+cd db
+```
+
+- Предполагается, что ssh ключи для подключения к инстансам GCE лежат в ~/.ssh/google_compute_engine{,pub}
+
+```bash
+ssh-keygen -t rsa -f google_compute_engine -C 'travis' -q -N ''
+```
+
+- Как загрузить ключи в GCP описано здесь https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys
+
+- Генерируем сервисный аккаунт
+
+```bash
+gcloud iam service-accounts create travis --display-name travis
+```
+
+- Создаем файл с секретной информацией для подключения сервисного аккаунта
+
+```bash
+gcloud iam service-accounts keys create ./credentials.json --iam-account travis@infra-207406.iam.gserviceaccount.com
+```
+
+Добавляем роли для сервисного аккаунта
+
+```bash
+gcloud projects add-iam-policy-binding infra-207406 --member serviceAccount:travis@infra-207406.iam.gserviceaccount.com --role roles/editor
+```
+
+**Примечание1:** здесь указана роль roles/editor у которой достаточно много полномочий, возможно стоит указать роль с меньшими полномочиями
+
+- Запуск тестов molecule в GCE (нужно заменить infra-some-project-id на реальный проект)
+
+```bash
+export P_ID=infra-some-project-id
+USER=travis GCE_SERVICE_ACCOUNT_EMAIL=travis@${P_ID}.iam.gserviceaccount.com GCE_CREDENTIALS_FILE=$(pwd)/credentials.json GCE_PROJECT_ID=${P_ID} molecule test
+```
+
+Настройка интеграции с travis ci (**ВАЖНО!!!**: если для проверок используется временный репозиторий (в примерах это trytravis-db-role), то нужно везде указывать имя репозитория при шифровании секретных данных, также нужно временно сменить имя роли на trytravis-db-role в molecule playbook)
+
+```bash
+travis encrypt 'GCE_SERVICE_ACCOUNT_EMAIL=travis@infra-207406.iam.gserviceaccount.com' --repo loktionovam/trytravis-db-role
+travis encrypt GCE_CREDENTIALS_FILE=\$TRAVIS_BUILD_DIR/credentials.json --repo loktionovam/trytravis-db-role
+travis encrypt 'GCE_PROJECT_ID=infra-207406' --repo loktionovam/trytravis-db-role
+travis login --org --repo loktionovam/trytravis-db-role
+tar cvf secrets.tar credentials.json google_compute_engine
+travis encrypt-file secrets.tar --repo loktionovam/trytravis-db-role --add
+# Проверить и поправить файл .travis.yml - после автоматического добавления шифрованных данных через travis encrypt линтер начинает выдавать ошибки
+molecule lint
+```
+
+После того, как все ошибки будут исправлены через trytravis, нужно перешифровать все данные, но уже для основного репозитория (повторить предыдущие шаги, но без ключа --repo)
+
+Интеграция со slack каналом
+
+```bash
+travis encrypt "devops-team-otus:some-secret-info" --add notifications.slack -r loktionovam/db
+molecule lint
+# Если нужно, то поправить .travis.yml
+```
+
+#### 11.2.2 Интеграция роли db с ansible galaxy
+
+- Зарегистрироваться на ansible galaxy
+
+- Настроить метаданные роли (**author, description, license, tags, platforms, company**) в meta/main.yml
+
+```yaml
+---
+galaxy_info:
+  author: Aleksandr Loktionov
+  description: mongodb role
+  company: none
+  license: BSD
+  min_ansible_version: 2.4
+  platforms:
+    - name: Ubuntu
+      versions:
+        - xenial
+  galaxy_tags:
+    - database
+dependencies: []
+```
+
+- Импортировать роль в ansible galaxy, при необходимости исправить ошибки линтера
+
+```bash
+ansible-galaxy import loktionovam db
+```
+
+**Примечание 1:** веб-интерфейс ansible galaxy не дает импротировать роль с названием короче, чем 2 символа. Через cli таких проблем нет.
+
+**Примечание 2:** несмотря на то, что у ansible-galaxy import есть ключ role-name
+
+```bash
+ansible-galaxy import --help | grep -A 2 role-name=ROLE_NAME
+  --role-name=ROLE_NAME
+                        The name the role should have, if different than the
+                        repo name
+
+```
+
+он не заработал, т.е. роль без ошибок импортировалась, но ее название не менялось (не очень понятно, почему так происходит https://github.com/ansible/ansible/commit/bd9ca5ef28dff4f788f92bc2068a5a490e7c9be9 этот коммит вроде как должен решать проблему, но роль не переименовывается)
+
+#### 11.2.3 Запуск dev окружения
+
+Запустить проект в dev окружении (appserver, dbserver)
+
+```bash
+cd ansible
+ansible-galaxy install -r environments/dev/requirements.yml
+vagrant up
+```
+
+Удалить dev окружение
+
+```bash
+vagrant destroy
+```
+
+### 11.3 Как проверить проект
+
+- appserver, dbserver должны быть доступны по ssh
+
+```bash
+vagrant ssh appserver
+vagrant ssh dbserver
+```
+
+- В браузере должно открываться reddit приложение по адресу http://10.10.10.20/

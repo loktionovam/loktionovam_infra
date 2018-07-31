@@ -1,0 +1,10 @@
+---
+
+- name: Install ruby and related packages
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  with_items:
+    - "{{ app_ruby_packages }}"
+  become: yes
+  tags: install

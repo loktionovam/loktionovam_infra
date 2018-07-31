@@ -9,6 +9,14 @@ gce-service-account.json
 ansible/inventory_gce/*
 ansible/inventory_terraform/*
 jdauphant.nginx
+ansible/roles/db/*
 vault.key
 terraform-inventory
 gce.py
+# Vagrant & molecule 
+.vagrant/ 
+*.log 
+*.pyc 
+.molecule 
+.cache 
+.pytest_cache
