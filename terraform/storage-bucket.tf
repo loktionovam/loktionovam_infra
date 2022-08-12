@@ -1,20 +1,15 @@
 provider "google" {
-  version = "1.4.0"
-  project = "${var.project}"
-  region  = "${var.region}"
+  version = "3.6.0"
+  project = var.project
+  region  = var.region
 }
 
-module "storage-bucket" {
-  source  = "SweetOps/storage-bucket/google"
-  version = "0.1.1"
-
-  # Due to bug https://github.com/wata727/tflint/issues/167
-  # Use github link, not terraform module registry
-  # source = "git::https://github.com/SweetOps/terraform-google-storage-bucket.git?ref=v0.1.1"
-
-  name = ["infra-tf-state-stage", "infra-tf-state-prod"]
+resource "google_storage_bucket" "storage-bucket" {
+  name     = join("-", ["kubernetes-tf-state-bucket", var.environment])
+  location = "EU"
 }
 
-output storage-bucket_url {
-  value = "${module.storage-bucket.url}"
+
+output "storage-bucket_url" {
+  value = google_storage_bucket.storage-bucket.url
 }
