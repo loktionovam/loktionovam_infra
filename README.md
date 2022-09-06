@@ -1,4 +1,5 @@
 # loktionovam_infra
+
 loktionovam Infra repository
 
 **Build status**
@@ -12,28 +13,75 @@ ansible-4:
 db role(v.1.1.0):
 [![Build Status](https://travis-ci.org/loktionovam/db.svg?branch=1.1.0)](https://travis-ci.org/loktionovam/db)
 
-## Подключение через ssh к инстансам в GCP через bastion хост
-### Начальные данные
+
+* [loktionovam_infra](#loktionovam_infra)
+  * [SSH connect to GCP instances through a bastion host](#ssh-connect-to-gcp-instances-through-a-bastion-host)
+    * [Connection parameters](#connection-parameters)
+    * [ssh version 7.3 and newer](#ssh-version-73-and-newer)
+    * [ssh version 7.2 and older](#ssh-version-72-and-older)
+    * [Setup ~/.ssh/config](#setup-sshconfig)
+  * [Connection to GCP instances through VPN](#connection-to-gcp-instances-through-vpn)
+  * [Managing GCP via gcloud](#managing-gcp-via-gcloud)
+  * [Building VM images by packer](#building-vm-images-by-packer)
+  * [Practicing IaC and usage of Terraform](#practicing-iac-and-usage-of-terraform)
+    * [Setup a HTTP loadbalancer for reddit-app, reddit-app2](#setup-a-http-loadbalancer-for-reddit-app-reddit-app2)
+  * [Homework-7: Terraform: resources, modules, environments and teamwork](#homework-7-terraform-resources-modules-environments-and-teamwork)
+      * [7.1 What was done](#71-what-was-done)
+    * [7.2 How to start the project](#72-how-to-start-the-project)
+    * [7.3 How to check the project](#73-how-to-check-the-project)
+  * [Homework-8: Configuration management. The main DevOps tools. Introduction to Ansible](#homework-8-configuration-management-the-main-devops-tools-introduction-to-ansible)
+      * [8.1 What was done](#81-what-was-done)
+    * [8.2 How to start the project](#82-how-to-start-the-project)
+    * [8.3 How-to check the project](#83-how-to-check-the-project)
+  * [Homework-9: Deploy and configuration management by Ansible](#homework-9-deploy-and-configuration-management-by-ansible)
+    * [9.1 What was done](#91-what-was-done)
+    * [9.2 How-to start the project](#92-how-to-start-the-project)
+      * [9.2.1 Setup the dynamic inventory via gce.py (this is the main way, used in the playbooks section 9.2.3)](#921-setup-the-dynamic-inventory-via-gcepy-this-is-the-main-way-used-in-the-playbooks-section-923)
+      * [9.2.2 Setup the dynamic inventory via terraform-inventory](#922-setup-the-dynamic-inventory-via-terraform-inventory)
+      * [9.2.3 Application configuration and deploy](#923-application-configuration-and-deploy)
+    * [9.3 How to check the project](#93-how-to-check-the-project)
+  * [Homework-10: Ansible - roles and environments](#homework-10-ansible---roles-and-environments)
+    * [10.1 What was done](#101-what-was-done)
+    * [10.2 How-to start the project](#102-how-to-start-the-project)
+    * [10.3 How-to check the project](#103-how-to-check-the-project)
+  * [Homework-11: Development and testing Ansible roles and playbooks](#homework-11-development-and-testing-ansible-roles-and-playbooks)
+    * [11.1 What was done](#111-what-was-done)
+    * [11.2 How-to start the project](#112-how-to-start-the-project)
+      * [11.2.1 Ansible db role repository](#1121-ansible-db-role-repository)
+      * [11.2.2 Integration db role with ansible galaxy](#1122-integration-db-role-with-ansible-galaxy)
+      * [11.2.3 Start the dev environment](#1123-start-the-dev-environment)
+    * [11.3 How-to check the project](#113-how-to-check-the-project)
+
+## SSH connect to GCP instances through a bastion host
+
+### Connection parameters
+
 * bastion
- * Пользователь: appuser
- * External IP: 35.206.144.27
- * Internal IP: 10.132.0.2
+* User: appuser
+* External IP: 35.206.144.27
+* Internal IP: 10.132.0.2
 * someinternalhost
-  * Пользователь: appuser
+  * User: appuser
   * Internal IP: 10.132.0.3
 
-На **bastion** имя **someinternalhost** разрешается в IP адрес
+At the **bastion** host the name **someinternalhost** is resolved to an IP address:
+
 ```bash
 $ host  someinternalhost
 someinternalhost.c.infra-207406.internal has address 10.132.0.3
 ```
-### Для ssh версии 7.3 и выше
-В новых версиях ssh для этих целей существует опция **ProxyJump** (ключ -J)
+
+### ssh version 7.3 and newer
+
+In the new versions of ssh there is an option **ProxyJump** (`-J`) to connect to private infrastructure via a jump host:
+
 ```bash
 ssh -V
 OpenSSH_7.6p1 Ubuntu-4, OpenSSL 1.0.2n  7 Dec 2017
 ```
-Пример подключения из командной строки
+
+For example, here is a connection from CLI:
+
 ```bash
 $ ssh -i ~/.ssh/appuser -J appuser@35.206.144.27 appuser@someinternalhost
 Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
@@ -53,13 +101,18 @@ Last login: Sat Jun 16 08:06:18 2018 from 10.132.0.2
 appuser@someinternalhost:~$
 ```
 
-### Для ssh более старых версий
-В старых версиях ssh опции **ProxyJump** нет, но можно использовать опцию **ProxyCommand** и команда для подключения к **someinternalhost** будет выглядеть так:
+### ssh version 7.2 and older
+
+There aren't any ssh option **ProxyJump** but you can use an option named **ProxyCommand** so the command to connect to **someinternalhost**:
+
 ```bash
 ssh  -o 'ProxyCommand ssh appuser@35.206.144.27 -W %h:%p' appuser@someinternalhost
 ```
-### Настройка ~/.ssh/config
-Чтобы каждый раз при подключении к **someinternalhost** не указывать параметры **bastion** хоста, можно модифицировать **~/.ssh/config**
+
+### Setup ~/.ssh/config
+
+If you don't want to manually provide the connection parameters of a **bastion** host every time you can modify **~/.ssh/config**
+
 ```bash
 $ if ssh -J 2>&1 | grep "unknown option -- J" >/dev/null; then PROXY_COMMAND='ProxyCommand ssh appuser@bastion -W %h:%p'; else PROXY_COMMAND='ProxyJump %r@bastion'; fi
 $ cat <<EOF>>~/.ssh/config
@@ -76,7 +129,9 @@ ${PROXY_COMMAND}
 EOF
 
 ```
-Проверка подключения через alias **someinternalhost**
+
+Testing a connection with an alias **someinternalhost**
+
 ```bash
 $ ssh someinternalhost
 Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
@@ -95,19 +150,21 @@ Welcome to Ubuntu 16.04.4 LTS (GNU/Linux 4.13.0-1019-gcp x86_64)
 Last login: Sat Jun 16 08:24:37 2018 from 10.132.0.2
 appuser@someinternalhost:~$
 ```
-## Подключение к инстансам в GCP через VPN
 
-На **bastion** установлен и настроен pritunl VPN сервер. Для подключения к VPN нужно импортировать конфигурационный файл **cloud-bastion.ovpn** в OpenVPN клиент.
+## Connection to GCP instances through VPN
+
+**pritunl** vpn server is installed on the **bastion** host. To setup VPN connection import **cloud-bastion.ovpn** to an OpenVPN client.
 
 bastion_IP = 35.206.144.27
 someinternalhost_IP = 10.132.0.3
 
-## Управление GCP через gcloud
+## Managing GCP via gcloud
 
 testapp_IP = 104.199.102.152
 testapp_port = 9292  
 
-Автоматическое создание инстанса тестового приложения **reddit-app** с использованием startup script
+To create an instance of **reddit-app** by startup script:
+
 ```bash
 export GIT_REPO_URL=https://github.com/Otus-DevOps-2018-05/loktionovam_infra.git
 gcloud compute instances create reddit-app \
@@ -120,28 +177,41 @@ gcloud compute instances create reddit-app \
 --metadata-from-file startup-script=config-scripts/startup.sh \
 --metadata=git_repo_url="${GIT_REPO_URL}",git_repo_branch=$(git rev-parse --abbrev-ref HEAD)
 ```
-Создание правила файерволла для доступа к puma server
+
+To create a firewall rule to access to a puma server
+
 ```bash
 gcloud compute firewall-rules create default-puma-server --allow tcp:9292 --target-tags puma-server
 ```
-## Сборка образов VM при помощи packer
-Чтобы собрать образ VM нужно переименовать файл **packer/variables.json.example** и настроить в нем переменные **gcp_project_id**, **gcp_source_image_family**
+
+## Building VM images by packer
+
+To build VM image rename **packer/variables.json.example** and setup **gcp_project_id**, **gcp_source_image_family** inside it:
+
 ```bash
 mv packer/variables.json{.example,}
 ```
-После этого образ **reddit-base** можно собрать командами
+
+Run the building **reddit-base** image:
+
 ```bash
 cd packer && packer validate -var-file=variables.json ubuntu16.json && packer build -var-file=variables.json  ubuntu16.json
 ```
-и аналогично **reddit-full**
+
+and similarly to build **reddit-full**
+
 ```bash
 cd packer && packer validate -var-file=variables.json immutable.json && packer build -var-file=variables.json  immutable.json
 ```
-после этого, создать и запустить инстанс можно скриптом **create-reddit-vm.sh** (по-умолчанию используется образ **reddit-full**)
+
+to create and start an instance execute **create-reddit-vm.sh** (by default it use **reddit-full** image)
+
 ```bash
 config-scripts/create-reddit-vm.sh
 ```
-чтобы использовать другой образ его нужно указать через ключ командной строки, например **-i reddit-base**
+
+to use another image (for example, **reddit-base**) use `-i` argument:
+
 ```bash
 config-scripts/create-reddit-vm.sh -i reddit-base
 ...
@@ -149,15 +219,15 @@ config-scripts/create-reddit-vm.sh -h
 Usage: create-reddit-vm.sh [-n INSTANCE_NAME] [-i IMAGE_FAMILY]
 ```
 
-## Практика IaC с использованием Terraform
+## Practicing IaC and usage of Terraform
 
-При использовании IaC есть проблема - больше нельзя вносить изменения в инфраструктуру вручную, т.е. IaC используется или всегда или никогда. Например, пусть мы добавили ssh ключи в метаданные проекта через terraform
+There is a problem while you are use IaC approach - you can not manually change your infrastructure. For example, assume we added a ssh key to a project metadata via terraform
 
 ```
 ssh-keys = "appuser1:${chomp(file(var.public_key_path))}"
 ```
 
-затем применили изменения, добавили еще несколько пользователей
+apply the changes and added some other users
 
 ```
     ssh-keys = <<EOF
@@ -166,35 +236,35 @@ appuser2:${chomp(file(var.public_key_path))}
 appuser3:${chomp(file(var.public_key_path))}EOF
 ```
 
-и опять применили изменения. После этого мы можем узнать, как со временем менялась инфраструктура, кто, когда и с какой целью вносил в нее изменения (это можно отследить через git, и файлы terraform.tfstate, terraform.tfstate.backup).
+and apply the changes again. After that we can track (git and terraform.tfstate, terraform.tfstate.backup) how our infrastructure had been changed during the time and who, when and why changed it.
 
-Если теперь мы внесем изменения вручную, например, добавив ssh ключ для пользователя appuser_web через веб-интерфейс GCP, то эти изменения нигде не будут отражены и при выполении команды
+Now if we manually change our infrastructure, for example, by adding a ssh key for appuser_web via GCP web-interface then these changes will never be shown during an execution:
 
 ```bash
 terraform apply
 ```
 
-будут потеряны.
+and they will be lost.
 
-### Настройка HTTP балансировщика для пары хостов reddit-app, reddit-app2
+### Setup a HTTP loadbalancer for reddit-app, reddit-app2
 
-После добавления reddit-app2 и настройки http балансировщика через terraform есть проблема, которая заключается в том, что приложение reddit-app это statefull приложение, т.е. у него есть состояние (мы храним его в mongodb), которое балансировка не учитывает. В этом легко убедиться, если создать статью и сравнить БД на reddit-app и reddit-app2:
+If you add reddit-app2 and setup a http loadbalancer via terraform there will be a problem because reddit-app is a statefull application, i.e. is has a state (it stores the state in a mongodb) and the loadbalancer knows nothing about this. It would be easy to verify if we create an article and compare the database state on  reddit-app  reddit-app2:
 
 ```json
 reddit-app:~# mongo
 MongoDB shell version: 3.2.20
-connecting to: test
+connecting to: t
 > db.adminCommand( { listDatabases: 1 } )
 {
-	"databases" : [
-		{
-			"name" : "local",
-			"sizeOnDisk" : 65536,
-			"empty" : false
-		}
-	],
-	"totalSize" : 65536,
-	"ok" : 1
+ "databases" : [
+  {
+   "name" : "local",
+   "sizeOnDisk" : 65536,
+   "empty" : false
+  }
+ ],
+ "totalSize" : 65536,
+ "ok" : 1
 }
 ```
 
@@ -204,40 +274,38 @@ MongoDB shell version: 3.2.20
 connecting to: test
 > db.adminCommand( { listDatabases: 1 } )
 {
-	"databases" : [
-		{
-			"name" : "local",
-			"sizeOnDisk" : 65536,
-			"empty" : false
-		},
-		{
-			"name" : "user_posts",
-			"sizeOnDisk" : 65536,
-			"empty" : false
-		}
-	],
-	"totalSize" : 131072,
-	"ok" : 1
+ "databases" : [
+  {
+   "name" : "local",
+   "sizeOnDisk" : 65536,
+   "empty" : false
+  },
+  {
+   "name" : "user_posts",
+   "sizeOnDisk" : 65536,
+   "empty" : false
+  }
+ ],
+ "totalSize" : 131072,
+ "ok" : 1
 }
 ```
 
-т.е. пользователь будет получать разный ответ в зависимости от того, на какой бэкенд он попал. Решение - убрать mongodb с app серверов и решать проблемы балансировки и доступности для app серверов (stateless) и БД серверов (statefull) раздельно. Для БД в общем случае это будет репликация для решения проблем с производительностью чтения и отказоустойчивостью, и шардирование для решения проблем с производительностью записи.
+i.e. a user get a different answer and it depends on which backend answered to him. The solution is to move mongodb from the app servers and to solve the balancing problems for app servers (stateless) and database servers (statefull) separately. For the database servers it will be replication for read scaling/availability and sharding for write scaling.
 
-Количество app серверов настраивается переменной count (по-умолчанию она равна 1) в файле **terraform.tfvars** Например, если задать
+The number of app servers is set up in `count` variable (by default 1) in **terraform.tfvars** For example this
 
 ```
 count = 3
 ```
 
-то будет созадно 3 инстанса **reddit-app-001, reddit-app-002, reddit-app-003**
+will create three instances **reddit-app-001, reddit-app-002, reddit-app-003**
 
-При этом после выполнения команды
+to show app servers ip addresses and loadbalancer address execute:
 
 ```bash
 terraform apply
 ```
-
-будут выведены ip адреса каждого инстанса и ip адрес loadbalancer
 
 ```
 app_external_ip = [
@@ -248,25 +316,26 @@ app_external_ip = [
 lb_app_external_ip = loadbalancer-ip-address-here
 ```
 
-## Homework-7: Terraform: ресурсы, модули, окружения и работа в команде
+## Homework-7: Terraform: resources, modules, environments and teamwork
 
-#### 7.1 Что было сделано
+#### 7.1 What was done
 
-Основные задания:
-- Отключен loadbalancer из homework-6
-- В packer созданы отдельные образы для db и app серверов соответственно
-- Монолитная конфигурация terraform разбита на модули **app, db, vpc**
-- В terraform созданы окружения для **stage** и **prod**
+Main tasks:
+* disabled the loadbalancer from homework-6
+* created db and app images
+* the terraform monolith configuration was refactored and split to  **app, db, vpc** modules
+* created **stage** and **prod** environments in terraform
 
-Задания со *:
-- Созданы бакеты для хранения, в которые перемещены **prod** и **stage** terraform state files
-- В конфигурацию **app** модуля terraform добавлено развертывание reddit приложения. Добавлен ключ для включения/выключения развертывания приложения
+Advanced tasks *:
+* created S3 buckets where **prod** and **stage** terraform state files was placed
+* to **app** terraform module was added deployment of reddit application. Added a switch to enable/disable the deployment of the application
 
-### 7.2 Как запустить проект
+### 7.2 How to start the project
 
-Исходное состояние: установлены terraform (проверено на версии **v0.11.7**), packer (проверено на версии **1.2.4**) с доступом к GCP
+Prerequisite: terraform (**v0.11.7**), packer (**1.2.4**) are installed
 
-Создать образы reddit-app, reddit-db через packer, предварительно настроив **variables.json**
+Create reddit-app, reddit-db images via the packer by set up **variables.json**
+
 ```bash
 cd packer
 cp variables.json{.example,}
@@ -276,7 +345,8 @@ packer build -var-file=variables.json app.json
 cd -
 ```
 
-Создать бакеты для хранения state файла terraform, предварительно настроив **terraform.tfvars**
+Create S3 bucket to store the terraform state file by set up **terraform.tfvars**
+
 ```bash
 cd terraform
 cp terraform.tfvars{.example,}
@@ -285,7 +355,8 @@ terraform init
 terraform apply -auto-approve
 ```
 
-Создать prod/stage окружение, например для stage выполнить (при этом, для **prod** нужно задать переменную **source_ranges** для доступа по ssh):
+Create the prod/stage environments, for example to create `stage` execute (or to create **prod** setup **source_ranges** variable to grant a ssh access):
+
 ```bash
 cd stage/
 cp terraform.tfvars{.example,}
@@ -294,37 +365,37 @@ terraform init
 terraform apply -auto-approve
 ```
 
-### 7.3 Как проверить
+### 7.3 How to check the project
 
-В terraform/stage (или terraform/prod) выполнить
+At the `terraform/stage` (or `terraform/prod`) execute:
 
 ```bash
 terraform output
 ```
 
-будут выведены переменные **app_external_ip**, **db_external_ip**, при этом по адресу http://app_external_ip:9292 будет доступно приложение.
+this command shows **app_external_ip**, **db_external_i** variables at the same time the application will be launched <http://app_external_ip:9292>.
 
-## Homework-8: Управление конфигурацией. Основные DevOps инструменты. Знакомство с Ansible
+## Homework-8: Configuration management. The main DevOps tools. Introduction to Ansible
 
-#### 8.1 Что было сделано
+#### 8.1 What was done
 
-Основные задания:
-- Установка и знакомство с базовыми функциями ansible
-- Написание простых плейбуков
+Main tasks:
+* Installation ansible and introduction to the basic features
+* Writing of simple playbooks
 
-Задания со *:
-- Создание inventory в формате json
+Advanced task *:
+* Create an inventory in a json format
 
-### 8.2 Как запустить проект
+### 8.2 How to start the project
 
-Развернуть stage через terraform (см. **7.2 Как запустить проект**), после чего перейти в каталог ansible и запустить плейбук, клонирующий репозиторий reddit на app сервер
+Deploy the stage environment via terraform (**7.2 How to start the project**), enter to ansible directory and start a playbook that will clone a reddit repository an app server
 
 ```bash
 cd ansible
 ansible-playbook clone.yml
 ```
 
-Повторный запуск плейбука идемпотентен, т.е. повторно клонироваться репозиторий не будет (changed=0)
+The second running of the playbook is idempotent, i.e. the repository will not be cloned for the second time (changed=0)
 
 ```bash
 ansible-playbook clone.yml
@@ -332,7 +403,7 @@ ansible-playbook clone.yml
 appserver                  : ok=2    changed=0    unreachable=0    failed=0
 ```
 
-Но если удалить склонированный репозиторий
+But if we delete the cloned repository
 
 ```bash
 ansible app -m command -a 'rm -rf ~/reddit'
@@ -341,7 +412,7 @@ ansible app -m command -a 'rm -rf ~/reddit'
 appserver | SUCCESS | rc=0 >>
 ```
 
-то исполнение плейбука склонирует репозиторий заново (changed=1)
+the execution of the playbook will clone the repository one more time (changed=1)
 
 ```bash
 ansible-playbook clone.yml
@@ -349,7 +420,7 @@ ansible-playbook clone.yml
 appserver                  : ok=2    changed=1    unreachable=0    failed=0
 ```
 
-Для запуска ansible с использованием inventory в формате **json** нужен инвентори-скрипт, который в самом простом случае при вызове с ключом **--list** должен выводить хосты в json формате. Например, если у нас уже есть inventory.json, то передать его ansible можно таким скриптом **inventory_json**
+To run ansible with **json** inventory, an inventory script is needed, which in the simplest case (**--list** key) must print the hosts in the json format. For example, if we already have inventory.json we can pass it to ansible by this:
 
 ```bash
 #!/usr/bin/env bash
@@ -365,46 +436,45 @@ fi
 ansible -i inventory_json all -m ping
 ```
 
-Чтобы не указывать **inventory_json**, его можно добавить в **ansible.cfg**
+You can add it to **ansible.cfg** to not write it in CLI command every time
 
 ```ini
 inventory =./inventory_json,./inventory
 ```
 
-### 8.3 Как проверить
+### 8.3 How-to check the project
 
-После выполнения плейбука **clone.yml** можно проверить, что репозиторий действительно склонировался, например командой
+After playbook **clone.yml** was executed you can check that the repository was cloned
 
 ```bash
 ansible appserver -m command  -a "git log -1 chdir=/home/appuser/reddit"
 ```
 
-## Homework-9: Деплой и управление конфигурацией с Ansible
+## Homework-9: Deploy and configuration management by Ansible
 
+### 9.1 What was done
 
-### 9.1 Что было сделано
+Main tasks:
 
-Основные задания:
+* created ansible playbooks to configure and deploy the reddit application (**site.yml, db.yml, app.yml, deploy.yml**)
+* created playbooks (**packer_db.yml, packer_app.yml**) for packer
 
-- Создание плейбуков ansible для конфигурирования и деплоя reddit приложения (**site.yml, db.yml, app.yml, deploy.yml**)
-- Создание плейбуков ansible (**packer_db.yml, packer_app.yml**), их использование в packer
+Advanced tasks *:
 
-Задания со *:
+* usage of a dynamic inventory in GCP by the ansible contrib module (gce.py) and the terraform state file
+* setup the dynamic inventory (**gce.py** was chosen). Additionally  the ansible playbooks to configure dynamic inventory was written  (**terraform_dynamic_inventory_setup.yml, gce_dynamic_inventory_setup.yml**)
 
-- Исследование возможности использования dynamic inventory в GCP через contrib модуль ansible (gce.py) и terraform state file
-- Настройка dynamic inventory (выбран и используется **gce.py**). Дополнительно написаны ansible плейбуки для конфигурирования dynamic inventory  (**terraform_dynamic_inventory_setup.yml, gce_dynamic_inventory_setup.yml**)
+### 9.2 How-to start the project
 
-### 9.2 Как запустить проект
+Prerequisites: deploy the stage (**7.2 How-to start the project**)
 
-Предварительные действия: развернуть stage (см. **7.2 Как запустить проект**)
+#### 9.2.1 Setup the dynamic inventory via gce.py (this is the main way, used in the playbooks section 9.2.3)
 
-#### 9.2.1 Настройка динамического inventory через gce.py (основной способ, используется в плейбуках раздела 9.2.3)
+**Pros**: out of the box with ansible; collect more data than terraform-inventory; easier to setup
 
-**Преимущества**: поставляется вместе с ansible; собирает больше данных, чем terraform-inventory; проще в настройке
+**Cons**: this is the inventory only for GCE
 
-**Недостатки**: это inventory только для GCE
-
-Нужно создать сервисный аккаунт в GCE, скачать credential file в формате json и указать к нему путь во время исполнения **gce_dynamic_inventory_setup.yml**
+We need to create a  GCE service account, download a credential file (in a json format) and setup the path to it while **gce_dynamic_inventory_setup.yml** execution
 
 ```bash
 cd ansible
@@ -412,73 +482,73 @@ ansible-playbook gce_dynamic_inventory_setup.yml
 Enter path to GCE service account pem file [credentials/gce-service-account.json]:
 ```
 
-Посмотреть хосты динамического inventory через gce.py можно так:
+To list the host of the dynamic inventory via gce.py:
 
 ```bash
 sudo apt-get install jq
 ./inventory_gce/gce.py --list | jq .
 ```
 
-#### 9.2.2 Настройка динамического inventory через terraform-inventory
+#### 9.2.2 Setup the dynamic inventory via terraform-inventory
 
-**Преимущества**: через terraform можно делать динамический inventory не только GCE, но и остльных провайдеров; возможно, более высокая производительность, т.к. state файл с данными уже существует (это предположение требует проверки)
+**Pros**: not only GCE dynamic inventory, but the other provides too; perhaps faster execution because a state file with data already exists (need to check)
 
-**Недостатки**: текущий релиз (v0.7-pre Sep 22, 2016) не поддерживает terraform remote state file, как следствие, нужно компилировать; собирает меньше данных, чем gce.py; не очень понятно, что у него с поддержкой и комьюнити
+**Cons**: current release (v0.7-pre Sep 22, 2016) doesn't support terraform remote state file, as a consequence, we need to compile it; collect less data than gce.py; lack of support and community
 
-Чтобы автоматически настроить динамический inventory через terraform, нужно выполнить:
+To automatically setup dynamic inventory via terraform:
 
 ```bash
 cd ansible
 ansible-playbook --ask-sudo-pass terraform_dynamic_inventory_setup.yml
 ```
 
-Посмотреть хосты динамического inventory через terraform можно так (перед запуском, предполагается, что инфраструктура развернута через terraform):
+to list hosts from the dynamic inventory via terraform (we assume that an infrastructure is deployed by terraform):
 
 ```bash
 sudo apt-get install jq
 TF_STATE=../terraform/stage/ ./inventory_terraform/terraform-inventory --list | jq .
 ```
 
-#### 9.2.3 Конфигурация и деплой приложения
+#### 9.2.3 Application configuration and deploy
 
-Выполняем **9.2.1 Настройка динамического inventory через gce.py**
+Execute **9.2.1 Setup the dynamic inventory via gce.py**
 
 ```bash
 cd ansible
 ansible-playbook site.yml
 ```
 
-### 9.3 Как проверить проект
+### 9.3 How to check the project
 
-Описано в **7.3 Как проверить**
+Described in **7.3 How-to check the project**
 
-## Homework-10: Ansible - работа с ролями и окружениями
+## Homework-10: Ansible - roles and environments
 
-### 10.1 Что было сделано
+### 10.1 What was done
 
-Основные задания:
+Main tasks:
 
-- Плейбуки (app.yml, db.yml, gce_dynamic_inventory_setup.yml, terraform_dynamic_inventory_setup.yml) переписаны с использованией ролей
+* The playbooks (app.yml, db.yml, gce_dynamic_inventory_setup.yml, terraform_dynamic_inventory_setup.yml) was refactored and roles was used
 
-- Созданы окружения stage, prod
+* The environments stage, prod was created
 
-- Добавлен users.yml плейбук с использованием ansible vault
+* Add users.yml playbook that use an ansible vault
 
-- Добавлена сторонная роль jdauphant.nginx конфигурирующая nginx как прокси-сервер;
+* Added an external role named jdauphant.nginx that configures nginx as a proxy server;
 
-Задания со *:
+Advanced task *:
 
-- Настроено динамическое инвентори для окружений stage и prod
+* Setup the dynamic inventory for stage and  prod environments
 
-Задания с **:
+Advanced task **:
 
-- Настроен travis ci для запуска packer validate, terraform validate, tflint, ansible-lint. В README.md добавлен бейдж со статусом билда
+* Setup travis ci to launch packer validate, terraform validate, tflint, ansible-lint. The badge with build status was added to README.md
 
-### 10.2 Как запустить проект
+### 10.2 How-to start the project
 
-Предварительные действия: развернуть stage (см. **7.2 Как запустить проект**)
+Prerequisites: deploy the stage (**7.2 How-to start the project**)
 
-- Установить в рабочее окружение gce.py или terrafom inventory для динамического инвентори (плейбуки app.yml, db.yml, deploy.yml поддерживают оба варианта через ad-hoc группы в ansible)
+* Install gce.py or terrafom inventory for the dynamic inventory (the playbooks app.yml, db.yml, deploy.yml support the both ways via ansible ad-hoc groups)
 
 ```bash
 cd ansible
@@ -486,111 +556,110 @@ pip install -r requirements.txt
 ansible-playbook playbooks/gce_dynamic_inventory_setup.yml
 ```
 
-- Для работы nginx прокси установить комьюнити-роль jdauphant.nginx
+* To setup a nginx reverse proxy install community role jdauphant.nginx
 
 ```bash
 ansible-galaxy install -r environments/stage/requirements.yml
 ```
 
-- Настроить vault создав файл vault.key (используется в плейбуке users.yml)
+* Setup a vault by creating vault.key (used by users.yml playbook)
 
 ```bash
 echo "some_secret_for_ansible_vault" > ansible/vault.key
 ```
 
-- Запустить развертывание reddit приложения
+* Deploy the reddit application
 
 ```bash
 cd ansible
 ansible-playbook playbooks/site.yml
 ```
 
-### 10.3 Как проверить проект
+### 10.3 How-to check the project
 
-- В README.md должен стоять бэйдж **build passing**
+* В README.md should include **build passing** badge
 
-- В terraform/stage (или terraform/prod) выполнить
+* In the  `terraform/stage` (or  `terraform/prod`) execute:
 
 ```bash
 terraform output
 ```
 
-будут выведены переменные **app_external_ip**, **db_external_ip**, при этом по адресу http://app_external_ip будет доступно приложение.
+the variables **app_external_ip**, **db_external_ip** will be printed and the application will be here <http://app_external_ip>.
 
-## Homework-11: Разработка и тестирование Ansible ролей и плейбуков
+## Homework-11: Development and testing Ansible roles and playbooks
 
-### 11.1 Что было сделано
+### 11.1 What was done
 
-Основные задания:
+Main tasks:
 
-- Локальная разработка при помощи Vagrant - в Vagrantfile описаны конфигурации appserver, dbserver
+* Local development with Vagrant - the configuration of appserver and dbserver was describe in Vagrantfile
 
-- Добавлен плейбук base.yml для ansible bootstrap на хостах, где не установлен python
+* Added base.yml playbook to bootstrap the ansible on hosts where python is not installed
 
-- Доработана роль db для использования в Vagrant, в которую добавлены таски config_mongo.yml, install_mongo.yml
+* db role was refactored to support Vagrant, added tasks config_mongo.yml, install_mongo.yml
 
-- В Vagrantfile добавлены ansible провижинеры для appserver и dbserver
+* Added appserver and dbserver provisioners to a Vagrantfile
 
-- Добавлены тесты роли db через molecula и testinfra
+* Added db role tests (molecula and testinfra)
 
+Advanced tasks *:
 
-Задания со *:
+* Added dev environment, where a parametrization of appserver in Vagrant is set up
 
-- Добавлено dev окружение, в котором настроена параметризация конфигурации appserver в Vagrant
+* db role moved to the separate repository named loktionovam/db, db role imported to ansible galaxy and included in requirements.yml (stage and prod environments)
 
-- Роль db перемещена в отдельный репозиторий loktionovam/db, роль db импортирована в ansible galaxy и подключена через файл зависимостей requirements.yml для stage и prod окружений
+* setup testing for db role (molecule/testinfra) in GCE via travis ci after push to the repository, added a build status badge to README.md, integrate travis ci builds with slack
 
-- Для роли db настроен запуск тестов molecule/testinfra в GCE через travis ci после пуша в репозиторий, в README.md роли добавлен бэйдж статуса сборки, включена интеграция билдов travis ci со slack каналом интеграции
+### 11.2 How-to start the project
 
-### 11.2 Как запустить проект
+#### 11.2.1 Ansible db role repository
 
-#### 11.2.1 Репозиторий ansible роли db
+How to manually start test without travis
 
-Запуск тестов вручную без travis
-
-- Склонировать репозиторий
+* Clone the repository
 
 ```bash
 git clone git@github.com:loktionovam/db.git
 cd db
 ```
 
-- Предполагается, что ssh ключи для подключения к инстансам GCE лежат в ~/.ssh/google_compute_engine{,pub}
+* We assume that the ssh keys to connect to GCE instances already placed to ~/.ssh/google_compute_engine{,pub}
 
 ```bash
 ssh-keygen -t rsa -f google_compute_engine -C 'travis' -q -N ''
 ```
 
-- Как загрузить ключи в GCP описано здесь https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys
+* How to upload keys is described here <https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys>
 
-- Генерируем сервисный аккаунт
+* Genereate a service account
 
 ```bash
 gcloud iam service-accounts create travis --display-name travis
 ```
 
-- Создаем файл с секретной информацией для подключения сервисного аккаунта
+* Create a secret file for the service account
 
 ```bash
 gcloud iam service-accounts keys create ./credentials.json --iam-account travis@infra-207406.iam.gserviceaccount.com
 ```
 
-Добавляем роли для сервисного аккаунта
+Add the service account roles
 
 ```bash
 gcloud projects add-iam-policy-binding infra-207406 --member serviceAccount:travis@infra-207406.iam.gserviceaccount.com --role roles/editor
 ```
 
-**Примечание1:** здесь указана роль roles/editor у которой достаточно много полномочий, возможно стоит указать роль с меньшими полномочиями
+**Notice1:**  roles/editor has too many privileges so perhaps it will be reasonable to set up a role with less privileges
 
-- Запуск тестов molecule в GCE (нужно заменить infra-some-project-id на реальный проект)
+* Start molecule tests in GCE (you need to replace `infra-some-project-id` by real project name)
 
 ```bash
 export P_ID=infra-some-project-id
 USER=travis GCE_SERVICE_ACCOUNT_EMAIL=travis@${P_ID}.iam.gserviceaccount.com GCE_CREDENTIALS_FILE=$(pwd)/credentials.json GCE_PROJECT_ID=${P_ID} molecule test
 ```
 
-Настройка интеграции с travis ci (**ВАЖНО!!!**: если для проверок используется временный репозиторий (в примерах это trytravis-db-role), то нужно везде указывать имя репозитория при шифровании секретных данных, также нужно временно сменить имя роли на trytravis-db-role в molecule playbook)
+Set up integration with travis ci (**important!!!**: if you use a temporary repository (in examples it is trytravis-db-role)  you need to specify the repository name while the secret data encryption and also you need to temporary change the role name to trytravis-db-role in molecule playbook)
 
 ```bash
 travis encrypt 'GCE_SERVICE_ACCOUNT_EMAIL=travis@infra-207406.iam.gserviceaccount.com' --repo loktionovam/trytravis-db-role
@@ -599,25 +668,24 @@ travis encrypt 'GCE_PROJECT_ID=infra-207406' --repo loktionovam/trytravis-db-rol
 travis login --org --repo loktionovam/trytravis-db-role
 tar cvf secrets.tar credentials.json google_compute_engine
 travis encrypt-file secrets.tar --repo loktionovam/trytravis-db-role --add
-# Проверить и поправить файл .travis.yml - после автоматического добавления шифрованных данных через travis encrypt линтер начинает выдавать ошибки
+# check and fix .travis.yml - after encryption via travis encrypt the linter shows errors
 molecule lint
 ```
 
-После того, как все ошибки будут исправлены через trytravis, нужно перешифровать все данные, но уже для основного репозитория (повторить предыдущие шаги, но без ключа --repo)
+After all the errors will be fixed through trytravis re-encrypt all the data but for the main project (repeat the previous steps but without key `--repo`)
 
-Интеграция со slack каналом
+Integration with slack
 
 ```bash
 travis encrypt "devops-team-otus:some-secret-info" --add notifications.slack -r loktionovam/db
 molecule lint
-# Если нужно, то поправить .travis.yml
 ```
 
-#### 11.2.2 Интеграция роли db с ansible galaxy
+#### 11.2.2 Integration db role with ansible galaxy
 
-- Зарегистрироваться на ansible galaxy
+* Sign up ansible galaxy
 
-- Настроить метаданные роли (**author, description, license, tags, platforms, company**) в meta/main.yml
+* Setup role metadata (**author, description, license, tags, platforms, company**) in meta/main.yml
 
 ```yaml
 ---
@@ -636,15 +704,15 @@ galaxy_info:
 dependencies: []
 ```
 
-- Импортировать роль в ansible galaxy, при необходимости исправить ошибки линтера
+* Import the role to ansible galaxy, fix linter errors
 
 ```bash
 ansible-galaxy import loktionovam db
 ```
 
-**Примечание 1:** веб-интерфейс ansible galaxy не дает импротировать роль с названием короче, чем 2 символа. Через cli таких проблем нет.
+**Notice 1:** ansible galaxy web interface doesn't allow to import a role which name is shorter that two symbols. There aren't such limitations via cli.
 
-**Примечание 2:** несмотря на то, что у ansible-galaxy import есть ключ role-name
+**Примечание 2:** despite the ansible-galaxy import has a key role-name
 
 ```bash
 ansible-galaxy import --help | grep -A 2 role-name=ROLE_NAME
@@ -654,11 +722,11 @@ ansible-galaxy import --help | grep -A 2 role-name=ROLE_NAME
 
 ```
 
-он не заработал, т.е. роль без ошибок импортировалась, но ее название не менялось (не очень понятно, почему так происходит https://github.com/ansible/ansible/commit/bd9ca5ef28dff4f788f92bc2068a5a490e7c9be9 этот коммит вроде как должен решать проблему, но роль не переименовывается)
+it didn't work, i.e. the role had been imported without any errors but it name was not changed (I don't know why is that because <https://github.com/ansible/ansible/commit/bd9ca5ef28dff4f788f92bc2068a5a490e7c9be9> this commit seems to solve the problem but it still doesn't work)
 
-#### 11.2.3 Запуск dev окружения
+#### 11.2.3 Start the dev environment
 
-Запустить проект в dev окружении (appserver, dbserver)
+Deploy the project in dev environment (appserver, dbserver)
 
 ```bash
 cd ansible
@@ -666,19 +734,19 @@ ansible-galaxy install -r environments/dev/requirements.yml
 vagrant up
 ```
 
-Удалить dev окружение
+Remove the dev environment
 
 ```bash
 vagrant destroy
 ```
 
-### 11.3 Как проверить проект
+### 11.3 How-to check the project
 
-- appserver, dbserver должны быть доступны по ssh
+* appserver, dbserver should be accessible by ssh
 
 ```bash
 vagrant ssh appserver
 vagrant ssh dbserver
 ```
 
-- В браузере должно открываться reddit приложение по адресу http://10.10.10.20/
+* The reddit application works <http://10.10.10.20/>
